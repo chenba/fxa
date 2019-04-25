@@ -5,12 +5,14 @@
 //! Route handler
 //! for the `POST /send` endpoint.
 
+use std::io::Read;
+
 use rocket::{
-    data::{self, FromData},
+    data::{FromData, FromDataSimple, Outcome, Transform},
     http::Status,
     Data, Request, State,
 };
-use rocket_contrib::Json;
+use rocket_contrib::json::{Json, JsonValue};
 
 use crate::{
     db::{auth_db::DbClient, delivery_problems::DeliveryProblems, message_data::MessageData},
@@ -32,7 +34,7 @@ struct Body {
 }
 
 #[derive(Debug, Deserialize)]
-struct Email {
+pub struct Email {
     to: EmailAddress,
     cc: Option<Vec<EmailAddress>>,
     headers: Option<Headers>,
@@ -42,31 +44,40 @@ struct Email {
     metadata: Option<String>,
 }
 
-impl FromData for Email {
+impl FromDataSimple for Email {
     type Error = AppError;
 
-    fn from_data(request: &Request, data: Data) -> data::Outcome<Self, Self::Error> {
-        Json::<Email>::from_data(request, data)
-            .map_failure(|(_status, error)| {
-                (
-                    Status::BadRequest,
-                    AppErrorKind::InvalidPayload(error.to_string()).into(),
-                )
-            })
-            .map(|json| json.into_inner())
+    fn from_data(request: &Request, data: Data) -> Outcome<Self, Self::Error> {
+        let mut email_address = String::new();
+        if let Err(error) = data.open().take(1024).read_to_string(&mut email_address) {
+            return Outcome::Failure((
+                Status::InternalServerError,
+                AppErrorKind::Internal(error.to_string()).into(),
+            ));
+        }
+
+        Json::<Email>::from_data(
+            request,
+            Transform::Borrowed(Outcome::Success(&email_address)),
+        )
+        .map_failure(|(_status, error)| {
+            (
+                Status::BadRequest,
+                AppErrorKind::InvalidPayload(format!("{:?}", error)).into(),
+            )
+        })
+        .map(|json| json.into_inner())
     }
 }
 
-#[post("/send", format = "application/json", data = "<email>")]
-fn handler(
-    email: AppResult<Email>,
+#[post("/send", format = "json", data = "<email>")]
+pub fn handler(
+    email: Email,
     bounces: State<DeliveryProblems<DbClient>>,
     logger: State<MozlogLogger>,
     message_data: State<MessageData>,
     providers: State<Providers>,
-) -> AppResult<Json> {
-    let email = email?;
-
+) -> AppResult<JsonValue> {
     bounces.check(&email.to)?;
 
     let cc = if let Some(ref cc) = email.cc {
@@ -100,7 +111,12 @@ fn handler(
                         .expect("MozlogLogger::with_request error");
                     slog_error!(log, "{}", "Request errored");
                 });
-            Json(json!({ "messageId": message_id }))
+            json!({ "messageId": message_id })
         })
-        .map_err(|error| error)
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct SendResponse {
+    #[serde(rename = "messageId")]
+    pub message_id: String,
 }

@@ -23,7 +23,7 @@ use rocket::{
     response::{self, Responder, Response},
     Outcome, Request, State,
 };
-use rocket_contrib::Json;
+use rocket_contrib::json::Json;
 use sendgrid::errors::SendgridError;
 use serde::ser::{Serialize, SerializeMap, Serializer};
 use serde_json::{map::Map, ser::to_string, Error as JsonError, Value};
@@ -75,7 +75,7 @@ impl Display for AppError {
 }
 
 impl Fail for AppError {
-    fn cause(&self) -> Option<&Fail> {
+    fn cause(&self) -> Option<&dyn Fail> {
         self.inner.cause()
     }
 
@@ -143,6 +143,11 @@ impl<'r> Responder<'r> for AppError {
         let json = Json(self);
         let mut builder = Response::build_from(json.respond_to(request)?);
         builder.status(status).ok()
+        //Response::build()
+        //  .status(status)
+        //  .header(ContentType::JSON)
+        //  .sized_body(Cursor::new(serde_json::to_string(&self).map_err(|_| status)?))
+        //  .ok()
     }
 }
 
