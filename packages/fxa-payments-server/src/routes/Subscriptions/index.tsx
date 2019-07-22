@@ -70,6 +70,7 @@ export const Subscriptions = ({
     accessToken,
     locationReload,
     navigateToUrl,
+    queryParams
   } = useContext(AppContext);
 
   // Fetch subscriptions and customer on initial render or auth change.
@@ -169,6 +170,15 @@ export const Subscriptions = ({
           <p>{reactivateSubscriptionStatus.error.message}</p>
         </DialogMessage>
       )}
+
+      {queryParams.successfulSupportTicketSubmission && (
+        <AlertBar className="alert alertSuccess">
+          <span>
+            Your support question was sent! We'll reach out to you via email as soon as possible.
+          </span>
+        </AlertBar>
+      )}
+
 
       {profile.result && ( <ProfileBanner profile={profile.result} /> )}
 
