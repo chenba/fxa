@@ -173,7 +173,7 @@ export const Subscriptions = ({
 
       {queryParams.successfulSupportTicketSubmission && (
         <AlertBar className="alert alertSuccess">
-          <span>
+          <span data-testid="supportFormSuccess">
             Your support question was sent! We'll reach out to you via email as soon as possible.
           </span>
         </AlertBar>
