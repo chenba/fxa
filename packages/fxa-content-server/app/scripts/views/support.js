@@ -114,7 +114,9 @@ const SupportView = BaseView.extend({
 
   handleFormResponse(resp) {
     if (resp.success === true) {
-      this.navigateToSubscriptionsManagement();
+      this.navigateToSubscriptionsManagement({
+        successfulSupportTicketSubmission: true,
+      });
     } else {
       this.displayErrorMessage();
     }
@@ -132,11 +134,12 @@ const SupportView = BaseView.extend({
     });
   },
 
-  navigateToSubscriptionsManagement() {
+  navigateToSubscriptionsManagement(queryParams = {}) {
     PaymentServer.navigateToPaymentServer(
       this,
       this._subscriptionsConfig,
-      'subscriptions'
+      'subscriptions',
+      queryParams,
     );
   },
 
