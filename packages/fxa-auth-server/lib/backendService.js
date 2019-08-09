@@ -73,6 +73,7 @@ const Joi = require('joi');
 const P = require('./promise');
 const Pool = require('./pool');
 const error = require('./error');
+const redis = require('./redis');
 
 module.exports = function createBackendServiceAPI(
   log,
@@ -88,7 +89,67 @@ module.exports = function createBackendServiceAPI(
   }
 
   Service.prototype.close = function close() {
-    return this._pool.close();
+    const promises = [this._pool.close()];
+    if (this._redis) {
+      promises.push(this._redis.close());
+    }
+    return P.all(promises);
+  };
+
+  Service.prototype._initRedis = function _initRedis() {
+    this._redis =
+      this._redis ||
+      (config.redis &&
+        config.redis.services &&
+        redis({ ...config.redis, ...config.redis.services }, log));
+    return this._redis;
+  };
+
+  Service.prototype._isCachingEnabled = function _isCachingEnabled(opts) {
+    return (
+      opts.cache &&
+      opts.cache.ttlSeconds &&
+      opts.method.toLowerCase() === 'get' &&
+      this._initRedis()
+    );
+  };
+
+  function _cacheKey(fullMethodName, reqArgs) {
+    return `${fullMethodName}:${JSON.stringify(reqArgs)}`;
+  }
+
+  Service.prototype._cacheResponse = function _cacheResponse(
+    value,
+    fullMethodName,
+    opts,
+    reqArgs
+  ) {
+    if (this._isCachingEnabled(opts)) {
+      const key = _cacheKey(fullMethodName, reqArgs);
+      this._redis
+        .set(key, JSON.stringify(value), 'EX', opts.cache.ttlSeconds)
+        .catch(err => log.error('services.cacheResponse.fail', { err }));
+    }
+    return value;
+  };
+
+  Service.prototype._getCachedResponse = async function _getCachedResponse(
+    fullMethodName,
+    opts,
+    reqArgs
+  ) {
+    if (this._isCachingEnabled(opts)) {
+      const key = _cacheKey(fullMethodName, reqArgs);
+
+      try {
+        const json = await this._redis.get(key);
+        if (json) {
+          return JSON.parse(json);
+        }
+      } catch (err) {
+        log.error('services.getCachedResponse.failed', { err });
+      }
+    }
   };
 
   for (const methodName in methods) {
@@ -206,20 +267,31 @@ module.exports = function createBackendServiceAPI(
         : opts.method === 'GET'
         ? null
         : {};
+
+      const reqArgs = [path, params, query, payload, this._headers];
+
+      const cachedResp = await this._getCachedResponse(
+        fullMethodName,
+        opts,
+        reqArgs
+      );
+      if (cachedResp !== undefined) {
+        return cachedResp;
+      }
+
       // Unexpected extra fields in the service response should not be a fatal error,
       // but we also don't want them polluting our code. So, stripUnknown=true.
-      const response = await sendRequest(
-        this._pool,
-        opts.method,
-        path,
-        params,
-        query,
-        payload,
-        this._headers
+      const response = await sendRequest(this._pool, opts.method, ...reqArgs);
+      const validatedResp = await validate(
+        'response',
+        response,
+        responseSchema,
+        {
+          stripUnknown: true,
+        }
       );
-      return await validate('response', response, responseSchema, {
-        stripUnknown: true,
-      });
+      this._cacheResponse(validatedResp, fullMethodName, opts, reqArgs);
+      return validatedResp;
     }
 
     // Expose the options for introspection by calling code if necessary.

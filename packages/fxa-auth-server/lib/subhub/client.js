@@ -64,6 +64,9 @@ module.exports = function(log, config) {
           ErrorValidator
         ),
       },
+      cache: {
+        ttlSeconds: 600,
+      },
     },
 
     listSubscriptions: {

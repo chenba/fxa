@@ -441,6 +441,32 @@ const conf = convict({
         doc: 'Minimum connection count for the email config Redis pool',
       },
     },
+    services: {
+      enabled: {
+        default: true,
+        doc: 'Enable Redis for backend service response caching',
+        format: Boolean,
+        env: 'SERVICES_USE_REDIS',
+      },
+      prefix: {
+        default: 'services:',
+        env: 'SERVICES_REDIS_KEY_PREFIX',
+        format: String,
+        doc: 'Key prefix for the services Redis pool',
+      },
+      maxConnections: {
+        default: 10,
+        env: 'SERVICES_REDIS_POOL_MAX_CONNECTIONS',
+        format: 'int',
+        doc: 'Maximum connection count for the services Redis pool',
+      },
+      minConnections: {
+        default: 1,
+        env: 'SERVICES_REDIS_POOL_MIN_CONNECTIONS',
+        format: 'int',
+        doc: 'Minimum connection count for the services Redis pool',
+      },
+    },
     maxPending: {
       default: 1000,
       env: 'REDIS_POOL_MAX_PENDING',
