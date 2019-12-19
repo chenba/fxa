@@ -83,6 +83,10 @@ export interface FxaRedisClient {
 export interface RedisConfig {
   host: string;
   port: number;
+  enabled: boolean;
+  prefix: string;
+  maxConnections: number;
+  minConnections: number;
 }
 
 export interface Logger {

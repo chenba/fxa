@@ -15,7 +15,16 @@ import redis, { FxaRedisClient, RedisConfig } from '../../fxa-shared/redis';
 export type SupportConfig = {
   authHeader: string;
   authdbUrl: string;
-  redis: RedisConfig;
+  redis: {
+    host: string;
+    port: number;
+    sessionTokens: {
+      enabled: boolean;
+      prefix: string;
+      maxConnections: number;
+      minConnections: number;
+    };
+  };
 };
 
 const queryValidator = joi
@@ -76,7 +85,8 @@ class SupportController {
     private template: handlebars.TemplateDelegate<any>
   ) {
     this.redis = redis(logger, {
-      ...config.redis,
+      host: config.redis.host,
+      port: config.redis.port,
       ...config.redis.sessionTokens,
     });
   }
