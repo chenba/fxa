@@ -10,10 +10,12 @@ import { Logger } from 'mozlog';
 import path from 'path';
 import requests from 'request-promise-native';
 import joi from 'typesafe-joi';
+import redis, { FxaRedisClient } from '../../fxa-shared/redis';
 
 export type SupportConfig = {
   authHeader: string;
   authdbUrl: string;
+  redis: redis.RedisConfig;
 };
 
 const queryValidator = joi
@@ -67,11 +69,17 @@ export interface TotpTokenResponse {
 }
 
 class SupportController {
+  private redis: FxaRedisClient;
   constructor(
     private readonly logger: Logger,
     private readonly config: SupportConfig,
     private template: handlebars.TemplateDelegate<any>
-  ) {}
+  ) {
+    this.redis = redis(logger, {
+      ...config.redis,
+      ...config.redis.sessionTokens,
+    });
+  }
 
   public async heartbeat(request: hapi.Request, h: hapi.ResponseToolkit) {
     return h.response({}).code(200);
