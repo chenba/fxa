@@ -10,12 +10,12 @@ import { Logger } from 'mozlog';
 import path from 'path';
 import requests from 'request-promise-native';
 import joi from 'typesafe-joi';
-import redis, { FxaRedisClient } from '../../fxa-shared/redis';
+import redis, { FxaRedisClient, RedisConfig } from '../../fxa-shared/redis';
 
 export type SupportConfig = {
   authHeader: string;
   authdbUrl: string;
-  redis: redis.RedisConfig;
+  redis: RedisConfig;
 };
 
 const queryValidator = joi
@@ -147,6 +147,12 @@ class SupportController {
     };
     const payload = this.template(context);
     return h.response(payload).code(200);
+  }
+
+  private async getSigninLocations(uid: string): Promise<string[]> {
+    const packedTokens = await this.redis.get(uid);
+    const tokens = JSON.parse(packedTokens);
+    return [];
   }
 }
 

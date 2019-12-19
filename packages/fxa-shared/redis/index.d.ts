@@ -1,5 +1,3 @@
-import * as RedisTypes from '@types/redis';
-
 declare module 'redis' {
   export = RedisFactory;
 }
@@ -9,25 +7,82 @@ export default function RedisFactory(
   config: RedisConfig
 ): FxaRedisClient;
 
-export interface FxaRedisClient extends RedisTypes.RedisClient {
+export interface FxaRedisClient {
+  get(key: string): Promise<string>;
+  set(key: string, value: string): Promise<'OK'>;
+  del(...keys: string[]): Promise<number>;
+  zadd(...args: any[]): Promise<number | string>;
+  zrange(
+    key: string,
+    start: number,
+    stop: number,
+    withscores?: string
+  ): Promise<string[]>;
+  zrangebyscore(
+    key: string,
+    min: number | string,
+    max: number | string,
+    withscores?: string
+  ): Promise<string[]>;
+  zrangebyscore(
+    key: string,
+    min: number | string,
+    max: number | string,
+    limit: string,
+    offset: number,
+    count: number
+  ): Promise<string[]>;
+  zrangebyscore(
+    key: string,
+    min: number | string,
+    max: number | string,
+    withscores: string,
+    limit: string,
+    offset: number,
+    count: number
+  ): Promise<string[]>;
+  zrem(...args: any[]): Promise<number>;
+  zrevrange(
+    key: string,
+    start: number,
+    stop: number,
+    withscores?: string
+  ): Promise<string[]>;
+  zrevrangebyscore(
+    key: string,
+    min: number | string,
+    max: number | string,
+    withscores?: string
+  ): Promise<string[]>;
+  zrevrangebyscore(
+    key: string,
+    min: number | string,
+    max: number | string,
+    limit: string,
+    offset: number,
+    count: number
+  ): Promise<string[]>;
+  zrevrangebyscore(
+    key: string,
+    min: number | string,
+    max: number | string,
+    withscores: string,
+    limit: string,
+    offset: number,
+    count: number
+  ): Promise<string[]>;
   update(key: string, cb?: Callback<string>): void;
   zpoprangebyscore(
     key: string,
     min: number,
     max: number,
     withScore: boolean
-  ): Promise<Array<any>>;
+  ): Promise<string[]>;
 }
 
 export interface RedisConfig {
   host: string;
   port: number;
-  sessionTokens: {
-    enabled: boolean;
-    maxConnections: number;
-    minConnections: number;
-    prefix: string;
-  };
 }
 
 export interface Logger {
