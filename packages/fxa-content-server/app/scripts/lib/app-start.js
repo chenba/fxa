@@ -108,6 +108,8 @@ Start.prototype = {
         .then(() => this.initializeL10n())
         .then(() => this.initializeInterTabChannel())
         .then(() => this.initializeExperimentGroupingRules())
+        // @TODO Init survey targeting module
+        //.then(() => this.initializeSurveyTargeter())
         .then(() => this.initializeErrorMetrics())
         .then(() => this.initializeOAuthClient())
         // both the metrics and router depend on the language
@@ -521,6 +523,8 @@ Start.prototype = {
         environment: new Environment(this._window),
         notifier: this._notifier,
         router: this._router,
+        // @TODO Add the survery targeting module into the AppView
+        // surveyTargeter,
         translator: this._translator,
         window: this._window,
       });
