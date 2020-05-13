@@ -10,6 +10,7 @@ import sentryMetrics from './lib/sentry';
 import { QueryParams } from './lib/types';
 import { Config, config } from './lib/config';
 import { getErrorMessage } from './lib/errors';
+import { Survey } from './lib/Survey';
 import { Store } from './store';
 import { AppContext, AppContextType } from './lib/AppContext';
 
@@ -98,6 +99,7 @@ export const App = ({
                           </SignInLayout>
                         )}
                       />
+                      <Survey />
                     </React.Suspense>
                   </Router>
                 </ReduxProvider>
