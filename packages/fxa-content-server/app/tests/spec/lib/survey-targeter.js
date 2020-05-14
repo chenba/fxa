@@ -60,6 +60,6 @@ describe('lib/SurveyTargeter', () => {
   });
 
   it('surveyTargeter returns undefined if view does not match', () => {
-    assert.isFalse(surveyTargeter.getSurvey('non-view'));
+    assert.isUndefined(surveyTargeter.getSurvey('non-view'));
   });
 });
