@@ -38,7 +38,7 @@ module.exports = function(config) {
   const SENTRY_SERVER = 'https://sentry.prod.mozaws.net';
   // create a unique array of origins from survey urls
   const SURVEYS = [
-    ...new Set(config.get('surveys').map(s => getOrigin(s.url))),
+    ...new Set(config.get('surveys.surveys').map(s => getOrigin(s.url))),
   ];
   //
   // Double quoted values

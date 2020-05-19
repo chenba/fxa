@@ -4,6 +4,11 @@
 
 import SurveyTargeter from 'lib/survey-targeter';
 import { assert } from 'chai';
+import sinon from 'sinon';
+
+const sandbox = sinon.createSandbox();
+const trueFn = sandbox.stub().returns(true);
+const nullFn = sandbox.stub().returns(null);
 
 function storageMock() {
   const storage = {};
@@ -24,42 +29,56 @@ function storageMock() {
     key: function(i) {
       const keys = Object.keys(storage);
       return keys[i] || null;
-    }
+    },
   };
-};
+}
 
 describe('lib/SurveyTargeter', () => {
   let surveyTargeter;
 
   beforeEach(() => {
     surveyTargeter = new SurveyTargeter({
-      surveys: [
-        {
-          id: 'portugese-speaking-mobile-users-in-southern-hemisphere',
-          conditions: {},
-          view: 'settings',
-          rate: 0.1,
-          url: 'https://www.surveygizmo.com/s3/5541940/pizza',
+      window: {
+        localStorage: storageMock(),
+        navigator: {
+          userAgent:
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:76.0) Gecko/20100101 Firefox/76.0',
         },
-      ],
-      window: {localStorage: storageMock()}
+      },
+      relier: {
+        get: nullFn,
+      },
+      user: {
+        getSignedInAccount: trueFn,
+      },
+      config: {
+        enabled: true,
+        surveys: [
+          {
+            id: 'portugese-speaking-mobile-users-in-southern-hemisphere',
+            conditions: {},
+            view: 'settings',
+            rate: 0.1,
+            url: 'https://www.surveygizmo.com/s3/5541940/pizza',
+          },
+        ],
+        doNotBotherSpan: 2592000000,
+      },
     });
   });
 
-  it('surveyTargeter declares a surveyMap on initialization', () => {
-    assert.isDefined(surveyTargeter.surveyMap);
+  it('surveyTargeter returns a survey if the view matches', async () => {
+    const view = await surveyTargeter.getSurvey('settings');
+    assert.isTrue(view);
   });
 
-  it('surveyTargeter returns a survey if the view matches', () => {
-    assert.isDefined(surveyTargeter.getSurvey('settings'));
-  });
-
-  it('surveyTargeter sets "lastSurvey" in localStorage if view returns', () => {
-    assert.isDefined(surveyTargeter.getSurvey('settings'));
+  it('surveyTargeter sets "lastSurvey" in localStorage if view returns', async () => {
+    await surveyTargeter.getSurvey('settings');
     assert.isDefined(surveyTargeter._storage.get('lastSurvey'));
   });
 
-  it('surveyTargeter returns undefined if view does not match', () => {
-    assert.isUndefined(surveyTargeter.getSurvey('non-view'));
+  it('surveyTargeter returns false if view does not match', async () => {
+    const view = await surveyTargeter.getSurvey('non-view');
+    assert.isFalse(view);
   });
 });
