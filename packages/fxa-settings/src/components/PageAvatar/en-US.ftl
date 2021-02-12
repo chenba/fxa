@@ -1,4 +1,4 @@
-# Avatar change page
+## Avatar change page
 
 avatar-page-title =
   .title = Profile Picture
@@ -21,3 +21,5 @@ avatar-page-camera-error = Could not initialize camera
 avatar-page-new-avatar =
   .alt = new profile picture
 avatar-page-file-upload-error = There was an issue uploading your profile picture
+
+##

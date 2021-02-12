@@ -99,7 +99,7 @@ export const PageSecondaryEmailVerify = ({ location }: RouteComponentProps) => {
           })}
         >
           <Localized
-            id="verify-secondary-email-please-enter"
+            id="verify-secondary-email-please-enter-code"
             elems={{ email: <span className="font-bold">{email}</span> }}
           >
             <p>
