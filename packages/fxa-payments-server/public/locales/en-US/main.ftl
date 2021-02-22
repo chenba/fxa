@@ -8,6 +8,9 @@ project-brand = Firefox Accounts
 -brand-name-firefox = Firefox
 -brand-name-paypal = PayPal
 
+## Third party branding
+-brand-name-paypal = PayPal
+
 document =
   .title = Firefox Accounts
 
@@ -129,6 +132,7 @@ payment-confirm = I authorize Mozilla, maker of Firefox products, to charge my p
 payment-cancel-btn = Cancel
 payment-update-btn = Update
 payment-pay-btn = Pay now
+payment-pay-with-paypal-btn = Pay with { -brand-name-paypal }
 
 payment-validate-name-error = Please enter your name
 payment-validate-zip-required = Zip code is required
@@ -301,6 +305,7 @@ sub-guarantee = 30-day money-back guarantee
 pay-with-heading-other = Select payment option
 pay-with-heading-card-or = Or pay with card
 pay-with-heading-card-only = Pay with card
+pay-with-heading-saved = Use saved payment option
 
 ## plan-details
 plan-details-header = Product details

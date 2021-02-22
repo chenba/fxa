@@ -2,6 +2,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+/* eslint-disable camelcase */
+
 import React, { useCallback, useState } from 'react';
 import { Localized } from '@fluent/react';
 import dayjs from 'dayjs';
@@ -105,7 +107,7 @@ export const PaymentUpdateForm = ({
 
   const onFormEngaged = useCallback(() => Amplitude.updatePaymentEngaged(), []);
 
-  const { last4, exp_month, exp_year, payment_provider } = customer;
+  const { exp_month, exp_year, payment_provider } = customer;
 
   // https://github.com/iamkun/dayjs/issues/639
   const expirationDate = dayjs()

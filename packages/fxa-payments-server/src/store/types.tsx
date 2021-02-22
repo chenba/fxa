@@ -67,13 +67,22 @@ export interface CustomerSubscription {
   subscription_id: string;
 }
 
+export const PaymentProviders = {
+  stripe: 'stripe',
+  paypal: 'paypal',
+  none: 'not_chosen',
+} as const;
+
+export type PaymentProvider = typeof PaymentProviders[keyof typeof PaymentProviders];
+export type NoPaymentProvider = 'not_chosen';
+
 export type Customer = {
   billing_name?: string | null;
   brand?: string;
   exp_month?: string;
   exp_year?: string;
   last4?: string;
-  payment_provider?: string;
+  payment_provider?: PaymentProvider;
   payment_type?: string;
   subscriptions: Array<CustomerSubscription>;
 };

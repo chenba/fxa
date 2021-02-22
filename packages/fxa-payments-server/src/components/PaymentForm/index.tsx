@@ -35,10 +35,20 @@ import {
   getDefaultPaymentConfirmText,
 } from '../../lib/formats';
 import { AppContext } from '../../lib/AppContext';
-import { Plan, Customer } from '../../store/types';
+import {
+  Plan,
+  Customer,
+  PaymentProviders,
+  PaymentProvider,
+  NoPaymentProvider,
+} from '../../store/types';
 import { productDetailsFromPlan } from 'fxa-shared/subscriptions/metadata';
 
 import './index.scss';
+import { hasExistingCard, hasSubscriptions } from '../../lib/customer';
+import { hasPaymentProvider, isPaypal } from '../../lib/PaymentProvider';
+import { PaymentProviderDetails } from '../PaymentProviderDetails';
+import { localeToStripeLocale, STRIPE_ELEMENT_STYLES } from '../../lib/stripe';
 
 export type PaymentSubmitResult = {
   stripe: Stripe;
@@ -67,6 +77,16 @@ export type BasePaymentFormProps = {
   submitNonce: string;
 } & WithLocalizationProps;
 
+type OnSubmitHandlerDictionary = {
+  [key in Exclude<PaymentProvider, NoPaymentProvider>]: (
+    ev: React.FormEvent<HTMLFormElement>
+  ) => Promise<void>;
+};
+type GetOnSubmitFn = (
+  c: Customer | null | undefined,
+  fnMap: OnSubmitHandlerDictionary
+) => OnSubmitHandlerDictionary[keyof OnSubmitHandlerDictionary];
+
 export const PaymentForm = ({
   inProgress = false,
   confirm = true,
@@ -82,8 +102,7 @@ export const PaymentForm = ({
   onChange: onChangeProp,
   submitNonce,
 }: BasePaymentFormProps) => {
-  const hasExistingCard =
-    customer && customer.last4 && customer.subscriptions.length > 0;
+  const hasCard = hasExistingCard(customer);
 
   const stripe = useStripe();
   const elements = useElements();
@@ -111,7 +130,32 @@ export const PaymentForm = ({
   const shouldAllowSubmit = !nonceMatch && !inProgress && validator.allValid();
   const showProgressSpinner = nonceMatch || inProgress;
 
-  const onSubmit = useCallback(
+  const getOnSubmitHandler: GetOnSubmitFn = (c, fnMap) => {
+    if (!hasPaymentProvider(c)) {
+      return fnMap.stripe;
+    }
+
+    if (isPaypal(c!.payment_provider)) {
+      return fnMap.paypal;
+    }
+
+    return fnMap.stripe;
+  };
+
+  const payButtonL10nId = (c: Customer) => {
+    // Only PayPal at this point
+    if (hasPaymentProvider(c) && isPaypal(c.payment_provider)) {
+      return 'payment-pay-with-paypal-btn';
+    }
+
+    return 'payment-pay-btn';
+  };
+
+  const onPayPalFormSubmit: ReturnType<GetOnSubmitFn> = async (ev) => {
+    console.log('sub with saved PayPal method');
+  };
+
+  const onStripeFormSubmit = useCallback(
     async (ev) => {
       ev.preventDefault();
       if (!stripe || !elements || !shouldAllowSubmit) {
@@ -121,7 +165,7 @@ export const PaymentForm = ({
       const { name } = validator.getValues();
       const card = elements.getElement(CardElement);
       /* istanbul ignore next - card should exist unless there was an external stripe loading error, handled above */
-      if (hasExistingCard || card) {
+      if (hasCard || card) {
         onSubmitForParent({
           stripe,
           elements,
@@ -134,21 +178,12 @@ export const PaymentForm = ({
     [validator, onSubmitForParent, stripe, submitNonce, shouldAllowSubmit]
   );
 
-  const { navigatorLanguages } = useContext(AppContext);
+  const onSubmit = getOnSubmitHandler(customer, {
+    [PaymentProviders.stripe]: onStripeFormSubmit,
+    [PaymentProviders.paypal]: onPayPalFormSubmit,
+  });
 
-  const STRIPE_ELEMENT_STYLES = {
-    style: {
-      base: {
-        fontFamily:
-          'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif',
-        fontSize: '16px',
-        fontWeight: '500',
-      },
-      invalid: {
-        color: '#0c0c0d',
-      },
-    },
-  };
+  const { navigatorLanguages } = useContext(AppContext);
 
   let termsOfServiceURL, privacyNoticeURL;
   if (confirm && plan) {
@@ -157,51 +192,51 @@ export const PaymentForm = ({
       navigatorLanguages
     ));
   }
-  const paymentSource = hasExistingCard ? (
-    <div className="card-details" data-testid="card-details">
-      <Localized
-        id="sub-update-card-ending"
-        vars={{
-          last: (customer as Customer).last4!,
-        }}
-      >
-        <div
-          className={`new-sub c-card unbranded ${customer?.brand?.toLowerCase()}`}
-        >
-          Card ending {customer?.last4}
-        </div>
-      </Localized>
-    </div>
-  ) : (
-    <>
-      <Localized id="payment-name" attrs={{ placeholder: true, label: true }}>
-        <Input
-          type="text"
-          name="name"
-          label="Name as it appears on your card"
-          data-testid="name"
-          placeholder="Full Name"
-          required
-          spellCheck={false}
-          onValidate={(value, focused, props) =>
-            validateName(value, focused, props, getString)
-          }
-        />
-      </Localized>
 
-      <Localized id="payment-cc" attrs={{ label: true }}>
-        <StripeElement
-          component={CardElement}
-          name="creditCard"
-          label="Your card"
-          className="input-row input-row--xl"
-          options={STRIPE_ELEMENT_STYLES}
-          getString={getString}
-          required
-        />
-      </Localized>
-    </>
-  );
+  const paymentSource =
+    hasPaymentProvider(customer) && hasSubscriptions(customer) ? (
+      <div className="pricing-and-saved-payment">
+        <Localized
+          id={`plan-price-${plan!.interval}`}
+          vars={{
+            amount: getLocalizedCurrency(plan!.amount, plan!.currency),
+            intervalCount: plan!.interval_count!,
+          }}
+        >
+          <div className="pricing"></div>
+        </Localized>
+        <PaymentProviderDetails customer={customer!} />
+      </div>
+    ) : (
+      <>
+        <Localized id="payment-name" attrs={{ placeholder: true, label: true }}>
+          <Input
+            type="text"
+            name="name"
+            label="Name as it appears on your card"
+            data-testid="name"
+            placeholder="Full Name"
+            required
+            spellCheck={false}
+            onValidate={(value, focused, props) =>
+              validateName(value, focused, props, getString)
+            }
+          />
+        </Localized>
+
+        <Localized id="payment-cc" attrs={{ label: true }}>
+          <StripeElement
+            component={CardElement}
+            name="creditCard"
+            label="Your card"
+            className="input-row input-row--xl"
+            options={STRIPE_ELEMENT_STYLES}
+            getString={getString}
+            required
+          />
+        </Localized>
+      </>
+    );
 
   return (
     <Form
@@ -284,7 +319,7 @@ export const PaymentForm = ({
                   &nbsp;
                 </span>
               ) : (
-                <Localized id="payment-pay-btn">
+                <Localized id={payButtonL10nId(customer!)}>
                   <span className="lock">Pay now</span>
                 </Localized>
               )}
@@ -337,60 +372,5 @@ const validateName: OnValidateFunction = (
     error: !valid && !focused ? errorMsg : null,
   };
 };
-
-/**
- * Stripe locales do not exactly match FxA locales. Mostly language tags
- * without subtags. This function should convert / normalize as necessary.
- */
-type StripeLocale = StripeElementsOptions['locale'];
-export const localeToStripeLocale = (locale?: string): StripeLocale => {
-  if (locale) {
-    if (locale in stripeLocales) {
-      return locale as StripeLocale;
-    }
-    const lang = locale.split('-').shift();
-    if (lang && lang in stripeLocales) {
-      return lang as StripeLocale;
-    }
-  }
-  return 'auto';
-};
-
-// TODO: Move to fxa-shared/l10n?
-// see also: https://stripe.com/docs/js/appendix/supported_locales
-enum stripeLocales {
-  'ar',
-  'bg',
-  'cs',
-  'da',
-  'de',
-  'el',
-  'et',
-  'en',
-  'es',
-  'fi',
-  'fr',
-  'he',
-  'hu',
-  'id',
-  'it',
-  'ja',
-  'lt',
-  'lv',
-  'ms',
-  'mt',
-  'nb',
-  'nl',
-  'pl',
-  'pt-BR',
-  'pt',
-  'ro',
-  'ru',
-  'sk',
-  'sl',
-  'sv',
-  'tk',
-  'zh',
-}
 
 export default withLocalization(WrappedPaymentForm);

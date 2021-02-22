@@ -1,6 +1,24 @@
 @import '../../../../fxa-content-server/app/styles/breakpoints';
 
 form.payment {
+
+  .pricing-and-saved-payment {
+    display: flex;
+    font-size: 15px;
+    justify-content: space-between;
+
+    .pricing {
+      display: flex;
+      align-items: center;
+    }
+    .c-card {
+      margin: 0;
+    }
+    .paypal-logo {
+      width: 91px;
+    }
+  }
+
   .legal-blurb {
     clear: both;
     color: #686869;
